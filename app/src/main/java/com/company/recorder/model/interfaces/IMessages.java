@@ -14,7 +14,6 @@ public interface IMessages {
 
     String timeConversion(long value);
 
-
     String calculateMin(long seconds);
 
 

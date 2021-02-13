@@ -1,5 +1,6 @@
 package com.company.recorder.view.activity;
 
+import android.app.Activity;
 import android.os.Bundle;
 import android.support.design.widget.TabLayout;
 import android.support.v4.view.ViewPager;
@@ -9,15 +10,18 @@ import com.company.recorder.R;
 import com.company.recorder.model.adapter.ViewPagerAdapter;
 import com.company.recorder.model.interfaces.IMessages;
 import com.company.recorder.model.utils.Messages;
+import com.company.recorder.view.fragment.MusicFragment;
+import com.company.recorder.view.fragment.RecorderFragment;
 
 
-public class HomeActivity extends AppCompatActivity {
+public class HomeActivity extends AppCompatActivity implements RecorderFragment.InterfaceCommunicatorFromFragment {
 
     private TabLayout tabLayout;
     private ViewPager tabsViewPager;
     private long backPressed;
     private static final int TIME_INTERVAL = 2000;
     private IMessages messages;
+    public InterfaceCommunicatorFromActivity interfaceCommunicatorFromActivity;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -30,7 +34,9 @@ public class HomeActivity extends AppCompatActivity {
 
             messages = new Messages(this);
 
-            manageResponse();
+            showTabs();
+
+
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -44,6 +50,9 @@ public class HomeActivity extends AppCompatActivity {
         super.onResume();
     }
 
+    public interface InterfaceCommunicatorFromActivity {
+        void updateData(String data);
+    }
 
     @Override
     public void onBackPressed() {
@@ -57,7 +66,7 @@ public class HomeActivity extends AppCompatActivity {
         backPressed = System.currentTimeMillis();
     }
 
-    private void manageResponse() {
+    private void showTabs() {
         try {
             //add tabs
             tabLayout.removeAllTabs();
@@ -89,4 +98,13 @@ public class HomeActivity extends AppCompatActivity {
     }
 
 
+    @Override
+    public void updateList(String audioFile) {
+        try {
+            MusicFragment frag = (MusicFragment) getSupportFragmentManager().findFragmentById(R.id.view_pagerTabs);
+            frag.updateData(audioFile);
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
+    }
 }

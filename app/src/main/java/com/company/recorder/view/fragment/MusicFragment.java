@@ -36,19 +36,21 @@ import com.company.recorder.model.dto.MusicModel;
 import com.company.recorder.model.interfaces.IMessages;
 import com.company.recorder.model.utils.CheckInternet;
 import com.company.recorder.model.utils.Messages;
+import com.company.recorder.view.activity.HomeActivity;
 import com.company.recorder.viewmodel.MusicViewModel;
 
 import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 
 public class MusicFragment extends Fragment {
 
-  private   List<MusicModel> audioArrayList=new ArrayList<>();
-    private  RecyclerView recyclerView;
+    private List<MusicModel> audioArrayList = new ArrayList<>();
+    private RecyclerView recyclerView;
     private MediaPlayer mediaPlayer;
     private double current_pos;
     private TextView current, total, title;
@@ -57,7 +59,7 @@ public class MusicFragment extends Fragment {
     private LinearLayout viewLinearLayout;
     private int audio_index = 0;
     public static final int PERMISSION_READ = 0;
-
+    RecordingsAdapter adapter;
     private MusicViewModel musicViewModel;
     private IMessages messages;
 
@@ -69,12 +71,26 @@ public class MusicFragment extends Fragment {
 
     }
 
+    public void updateData(String file) {
+        try {
+            if (getAudioData(file) != null) {
+                audioArrayList.add(getAudioData(file));
+                Collections.reverse(audioArrayList);
+                adapter.notifyDataSetChanged();
+            }
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
+
+    }
+
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         // Inflate the layout for news fragment
         return inflater.inflate(R.layout.fragment_music, container, false);
 
     }
+
 
     @Override
     public void onViewCreated(@NonNull View view, Bundle savedInstanceState) {
@@ -137,42 +153,43 @@ public class MusicFragment extends Fragment {
 
 
     public void getRecordings() {
-        recyclerView.setLayoutManager(new LinearLayoutManager(getActivity(), LinearLayoutManager.VERTICAL, false));
-        recyclerView.setItemAnimator(new DefaultItemAnimator());
+        try {
+            recyclerView.setLayoutManager(new LinearLayoutManager(getActivity(), LinearLayoutManager.VERTICAL, false));
+            recyclerView.setItemAnimator(new DefaultItemAnimator());
 
-        mediaPlayer = new MediaPlayer();
-        getAudioRecordings();
-        setPause();
-        nextRecording();
-        prevRecording();
-        seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-            }
-
-            @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {
-            }
-
-            @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {
-                current_pos = seekBar.getProgress();
-                mediaPlayer.seekTo((int) current_pos);
-            }
-        });
-
-        mediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
-            @Override
-            public void onCompletion(MediaPlayer mp) {
-                audio_index++;
-                if (audio_index < (audioArrayList.size())) {
-                    playRecording(audio_index);
-                } else {
-                    audio_index = 0;
-                    playRecording(audio_index);
+            mediaPlayer = new MediaPlayer();
+            getAudioRecordings();
+            setPause();
+            nextRecording();
+            prevRecording();
+            seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+                @Override
+                public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 }
-            }
-        });
+
+                @Override
+                public void onStartTrackingTouch(SeekBar seekBar) {
+                }
+
+                @Override
+                public void onStopTrackingTouch(SeekBar seekBar) {
+                    current_pos = seekBar.getProgress();
+                    mediaPlayer.seekTo((int) current_pos);
+                }
+            });
+
+            mediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
+                @Override
+                public void onCompletion(MediaPlayer mp) {
+                    audio_index++;
+                    if (audio_index < (audioArrayList.size())) {
+                        playRecording(audio_index);
+                    } else {
+                        audio_index = 0;
+                        playRecording(audio_index);
+                    }
+                }
+            });
 
 //        if (!audioArrayList.isEmpty()) {
 //            playRecording(audio_index);
@@ -180,6 +197,9 @@ public class MusicFragment extends Fragment {
 //            nextRecording();
 //            setPause();
 //        }
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
     }
 
     public void playRecording(int pos) {
@@ -302,7 +322,7 @@ public class MusicFragment extends Fragment {
             } while (cursor.moveToNext());
         }
 
-        RecordingsAdapter adapter = new RecordingsAdapter(getActivity(), audioArrayList);
+         adapter = new RecordingsAdapter(getActivity(), audioArrayList);
         recyclerView.setAdapter(adapter);
 
         adapter.setOnItemClickListener(new RecordingsAdapter.OnItemClickListener() {
@@ -312,6 +332,39 @@ public class MusicFragment extends Fragment {
             }
         });
 
+    }
+
+
+    public MusicModel getAudioData(String audioFile) {
+        MusicModel modelRecordings = null;
+        ContentResolver contentResolver = Objects.requireNonNull(getActivity()).getContentResolver();
+        //creating content resolver and fetch audio files
+        Uri uri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
+
+        @SuppressLint("Recycle")
+        Cursor cursor = contentResolver.query(uri, null, MediaStore.Audio.Media.DATA + " like ?", new String[]{"%RecordApp%"}, null);
+
+        if (cursor != null && cursor.moveToFirst()) {
+            do {
+                String title = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.TITLE));
+                String data = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.DATA));
+                if (title.equals(audioFile)) {
+                    modelRecordings = new MusicModel();
+                    File file = new File(data);
+                    Date date = new Date(file.lastModified());
+                    @SuppressLint("SimpleDateFormat")
+                    SimpleDateFormat format = new SimpleDateFormat("MMMM dd, yyyy");
+                    modelRecordings.setTitle(title);
+                    modelRecordings.setDate(format.format(date));
+                    modelRecordings.setUri(Uri.parse(data));
+                    MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+                    retriever.setDataSource(data);
+                    modelRecordings.setDuration(messages.timeConversion(Long.parseLong(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION))));
+                }
+
+            } while (cursor.moveToNext());
+        }
+        return modelRecordings;
     }
 
     public boolean checkPermission() {
@@ -339,19 +392,21 @@ public class MusicFragment extends Fragment {
     }
 
     @Override
-    public void onResume(){
+    public void onResume() {
         super.onResume();
         if (mediaPlayer != null) {
             mediaPlayer.start();
         }
     }
+
     @Override
-    public void onPause(){
+    public void onPause() {
         super.onPause();
         if (mediaPlayer != null) {
             mediaPlayer.pause();
         }
     }
+
     @Override
     public void onDestroy() {
         super.onDestroy();

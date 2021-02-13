@@ -2,6 +2,7 @@ package com.company.recorder.view.fragment;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.content.ContentValues;
 import android.content.pm.PackageManager;
 import android.media.MediaRecorder;
@@ -38,7 +39,28 @@ public class RecorderFragment extends Fragment {
     private String filePath;
     private String audioFile;
     public static final int PERMISSION_ALL = 0;
+    InterfaceCommunicatorFromFragment interfaceCommunicatorFromFragment;
 
+    public interface InterfaceCommunicatorFromFragment {
+         void updateList(String audioFile);
+
+    }
+
+    @Override
+    public void onAttach(Activity activity) {
+        super.onAttach(activity);
+        try {
+            interfaceCommunicatorFromFragment = (InterfaceCommunicatorFromFragment) activity;
+        } catch (ClassCastException e) {
+            throw new ClassCastException(activity.toString());
+        }
+    }
+
+    @Override
+    public void onDetach() {
+        interfaceCommunicatorFromFragment = null; // => avoid leaking, thanks @Deepscorn
+        super.onDetach();
+    }
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -149,12 +171,14 @@ public class RecorderFragment extends Fragment {
                 values.put(MediaStore.Audio.Media.TITLE, audioFile);
                 //store audio recorder file in the external content uri
                 Objects.requireNonNull(getActivity()).getContentResolver().insert(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, values);
+                try {
+                    interfaceCommunicatorFromFragment.updateList(audioFile);
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                }
             }
         });
     }
-
-
-
 
     //display recording time
     public void showTimer() {

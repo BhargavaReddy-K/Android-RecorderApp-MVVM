@@ -54,7 +54,6 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.vi
     }
 
 
-
     class viewHolder extends RecyclerView.ViewHolder {
         TextView title, date, duration;
 
